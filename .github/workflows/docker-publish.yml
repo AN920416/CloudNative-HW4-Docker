@@ -1,0 +1,57 @@
+name: Docker Build and Push CI
+
+# 控制 Workflow 的觸發時機
+on:
+  push:
+    branches: [ "main" ] # 當有 commit 推送到 main 分支時觸發
+  pull_request:
+    branches: [ "main" ] # 當有 Pull Request 指向 main 分支時觸發
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu Runner
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 拉取最新的程式碼
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3 # 設定 QEMU (用於多平台建置，是個好習慣)
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3 # 設定 Docker Buildx (更進階的建置工具)
+
+      - name: Login to Docker Hub
+        # 只有在 main 分支的 push 事件時才執行登入和推送步驟
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # 使用我們設定的 Secret
+          password: ${{ secrets.DOCKERHUB_TOKEN }}  # 使用我們設定的 Secret
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Dockerfile 所在的上下文路徑 (專案根目錄)
+          file: ./Dockerfile # Dockerfile 的路徑
+          # 只有在 main 分支的 push 事件時才實際推送 (push: true)
+          # 對於 PR 事件，只建置不推送 (push: false)
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: | # 設定映像的標籤
+            ${{ secrets.DOCKERHUB_USERNAME }}/2025cloud:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/2025cloud:${{ github.sha }}
+          # ${{ github.sha }} 會是觸發 workflow 的那個 commit 的完整 SHA 值
+          # 例如：andywang303018/2025cloud:latest
+          # 和 andywang303018/2025cloud:f1a2b3c4d5e6...
+
+      # (可選) 為 PR 單獨建置的步驟，如果上面的邏輯已涵蓋，此步驟可省略或調整
+      # 主要目的是確保 PR 的 Dockerfile 是可以建置的
+      - name: Build Docker image for PR (no push)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false # PR 事件不推送
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/2025cloud:pr-${{ github.event.number }}
+          # pr-${{ github.event.number }} 會是像 pr-1, pr-2 這樣的標籤 (僅用於 Action 內部標識，不會推送)
