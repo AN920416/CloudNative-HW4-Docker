@@ -1,6 +1,9 @@
 # 使用官方 Python Runtime 作為基礎映像
 FROM python:3.10-slim
 
+#simulate a bug
+THISWILLBREAKEDOCKERFILE
+
 # 設定工作目錄
 WORKDIR /app
 
