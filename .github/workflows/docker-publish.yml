@@ -3,9 +3,9 @@ name: Docker Build and Push CI
 # 控制 Workflow 的觸發時機
 on:
   push:
-    branches: [ "main" ] # 當有 commit 推送到 main 分支時觸發
+    branches: [ "master" ] # 當有 commit 推送到 main 分支時觸發
   pull_request:
-    branches: [ "main" ] # 當有 Pull Request 指向 main 分支時觸發
+    branches: [ "master" ] # 當有 Pull Request 指向 main 分支時觸發
 
 jobs:
   build-and-push-image:
